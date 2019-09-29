@@ -1,0 +1,378 @@
+import sklearn
+import time    
+import pickle as pickle    
+import pandas as pd  
+import numpy as np
+import gc
+import warnings
+import matplotlib.pyplot as plt
+import seaborn as sn
+from sklearn import metrics    
+from sklearn import model_selection
+from sklearn import datasets
+from sklearn import preprocessing
+from sklearn.preprocessing import MinMaxScaler
+from sklearn.preprocessing import StandardScaler
+from sklearn.preprocessing import Normalizer
+from sklearn.preprocessing import  PolynomialFeatures
+from sklearn.preprocessing import  Imputer
+from sklearn.model_selection import train_test_split
+from matplotlib.colors import ListedColormap
+#保存模型
+import jieba
+#from sklearn.externals import joblib
+
+
+'''分类器'''
+
+
+ #Multinomial Naive Bayes Classifier    
+def naive_bayes_classifier(train_x, train_y):    
+    from sklearn.naive_bayes import MultinomialNB    
+    model = MultinomialNB(alpha=0.01)    
+    model.fit(train_x, train_y)    
+    return model    
+
+
+# KNN Classifier    
+def knn_classifier(train_x, train_y):    
+    from sklearn.neighbors import KNeighborsClassifier    
+    model = KNeighborsClassifier()    
+    model.fit(train_x, train_y)    
+    return model    
+
+
+# Logistic Regression Classifier    
+def logistic_regression_classifier(train_x, train_y):    
+    from sklearn.linear_model import LogisticRegression    
+    model = LogisticRegression(penalty='l2')    
+    model.fit(train_x, train_y)    
+    return model    
+
+
+# Random Forest Classifier    
+def random_forest_classifier(train_x, train_y):    
+    from sklearn.ensemble import RandomForestClassifier    
+    model = RandomForestClassifier(n_estimators=8)    
+    model.fit(train_x, train_y)    
+    return model    
+
+
+# Decision Tree Classifier    
+def decision_tree_classifier(train_x, train_y):    
+    from sklearn import tree    
+    model = tree.DecisionTreeClassifier()    
+    model.fit(train_x, train_y)    
+    return model    
+
+
+# GBDT(Gradient Boosting Decision Tree) Classifier    
+def gradient_boosting_classifier(train_x, train_y):    
+    from sklearn.ensemble import GradientBoostingClassifier    
+    model = GradientBoostingClassifier(n_estimators=200)    
+    model.fit(train_x, train_y)    
+    return model    
+
+
+# SVM Classifier    
+def svm_classifier(train_x, train_y):    
+    from sklearn.svm import SVC    
+    model = SVC(kernel='rbf', probability=True)    
+    model.fit(train_x, train_y)    
+    return model    
+
+# SVM Classifier using cross validation    
+def svm_cross_validation(train_x, train_y):    
+    from sklearn.grid_search import GridSearchCV    
+    from sklearn.svm import SVC    
+    model = SVC(kernel='rbf', probability=True)    
+    param_grid = {'C': [1e-3, 1e-2, 1e-1, 1, 10, 100, 1000], 'gamma': [0.001, 0.0001]}    
+    grid_search = GridSearchCV(model, param_grid, n_jobs = 1, verbose=1)    
+    grid_search.fit(train_x, train_y)    
+    best_parameters = grid_search.best_estimator_.get_params()    
+    for para, val in list(best_parameters.items()):    
+        print(para, val)    
+    model = SVC(kernel='rbf', C=best_parameters['C'], gamma=best_parameters['gamma'], probability=True)    
+    model.fit(train_x, train_y)    
+    return model    
+
+
+
+
+''' 特征工程'''
+
+
+'''
+    去除常量属性（值不变的属性）
+'''
+
+def drop_constant_column(data):
+    for i in data.columns:
+        if len(data.loc[:,i].unique()) == 1:
+            data.drop(i, axis=1, inplace=True)
+    return data
+
+
+
+'''
+    观察数据特征
+'''
+
+
+def get_dataframe_info(data):
+    print("data.shape",data.shape)
+    #number of hdd
+    print("number of hdd",data['serial_number'].value_counts().shape)
+    #number of different types of harddrives
+    print(data['model'].value_counts().shape)
+
+
+    
+
+
+'''
+    处理缺失文本
+'''
+
+def process_missing_value(data,column_drop_rate=0.15):
+    """ 处理代表缺失的文本 ？ """
+    for feature in data.columns:
+        data[feature]=data[feature].apply(lambda x: str(x).strip())
+        #csv文件中？代表缺失值，现将其改为python中的缺失值
+        data[feature]=data[feature].apply(lambda x: np.NaN if str(x)=='?' else x)
+    #drop all rows that have any NaN values
+    data =data.dropna(axis=0,how='any')
+    """ 删除缺失率>0.15的属性 """
+    total= data.isnull().sum().sort_values(ascending=False)
+    percent = (data.isnull().sum()/data.isnull().count()).sort_values(ascending=False)
+    missing_data = pd.concat([total, percent], axis=1, keys=['Total','Lost Percent'])
+    if 'failure' in (missing_data[missing_data['Lost Percent'] >= 0.15]).index:
+        data = data.drop((missing_data[missing_data['Lost Percent'] >= 0.15]).index.drop('failure') , axis=1)
+    else:
+        data = data.drop((missing_data[missing_data['Lost Percent'] >= 0.15]).index, axis=1)
+    ''' 还有NaN的情况，将NaN替换为-1，作为一种属性的取值类别 '''
+    for feature in data.columns:
+        #csv文件中？代表缺失值，现将其改为python中的缺失值
+        data[feature]=data[feature].apply(lambda x: -1 if x==np.NaN else x)
+
+    return data
+
+
+
+
+    '''
+        最大最小缩放
+    '''
+def MinMaxScaler(data):
+    min_max_scaler=preprocessing.MinMaxScaler(copy=True, feature_range=(0, 100))
+#这里处理后某些算法会出错 
+    train_x_raw=min_max_scaler.fit_transform(train_x_raw)
+    test_x_raw=min_max_scaler.fit_transform(test_x_raw)
+    return train_x_raw,test_x_raw
+
+
+
+
+    '''
+        标准化
+    '''
+def StandardScale(data):
+    scaler = preprocessing.StandardScaler()  
+    X_scaled = scaler.fit_transform(X)  
+    return X_scaled
+
+
+    '''
+        正则化
+    '''
+
+def Normalize(data):
+    norm = Normalizer(norm = l2)		# norm = L2
+    norm.fit(X_train)                   # fit does nothing
+    norm.transform(X_train)
+    norm.transform(X_test)              # 虽无意义，也不会报错，但可以这么使用
+    return X_train,X_test
+
+
+
+
+    """
+        通过smote进行过采样(如果需要的话)
+    """
+def over_sampling(data):
+    smote = SMOTE()
+    hdd_x_array,hdd_y_array = smote.fit_sample(hdd_x,hdd_y)
+    del hdd_x_array,hdd_y_array
+    gc.collect()
+    return data 
+
+
+
+
+    '''
+        读取数据
+    '''
+def read_data(data_file):    
+    data = pd.read_csv(data_file)  
+    print(data.shape)
+    data = data.drop(['serial_number','date'],axis=1)
+    print(data.shape)
+    data = data.fillna(0)
+    #data = data.dropna(axis=1, how='all', inplace=True)
+    data = drop_constant_column(data)
+    print(data.shape)
+    data.drop_duplicates(subset=None,keep='first',inplace=True)
+    print(data.shape)
+    X = data.drop('failure',axis=1)
+    y = data.failure
+    #train,test = train_test_split(data,test_size = 0.3,shuffle=False)
+    train_x_raw, test_x_raw, train_y,  test_y  = train_test_split(X,y,test_size=0.1,random_state=0)
+    print("训练集标签数目：%d,测试机标签数目：%d，训练集数据数目：%d,测试集数据数目：%d"%(train_y.shape[0],test_y.shape[0],train_x_raw.shape[0],test_x_raw.shape[0]))
+    positive = data.groupby(['failure']).size()[1]
+    negetive = data.groupby(['failure']).size()[0]
+    print("经过特征工程筛选后，正样本有%d个，负样本有%d个 "%(positive,negetive))
+    return train_x_raw, train_y, test_x_raw, test_y ,data
+    #原始值
+
+
+
+
+
+'''主程序'''
+
+
+if __name__ == '__main__':    
+    datafilename = 'ST4000DX000.csv'
+    data_file = "E:/"+datafilename    
+    thresh = 0.5    
+    model_save_file = 1    
+    model_save = {}    
+    test_classifiers = ['NB', 'KNN', 'LR', 'RF', 'DT']    
+    classifiers = {   
+                   'NB':naive_bayes_classifier,
+                  'KNN':knn_classifier,    
+                   'LR':logistic_regression_classifier,    
+                   'RF':random_forest_classifier,    
+                   'DT':decision_tree_classifier,    
+              #    'SVM':svm_classifier,    
+              #  'SVMCV':svm_cross_validation,    
+              #   'GBDT':gradient_boosting_classifier    
+    }    
+
+    print('开始读取数据...')    
+    train_x_raw, train_y_raw, test_x_raw, test_y_raw,data = read_data(data_file)     
+    print ('样本数量%d:,特征数量:%d'%(train_x_raw.shape[0],train_x_raw.shape[1]))
+    #print(np.isnan(train_x_raw).any())
+    imp=Imputer(missing_values='NaN',strategy='mean',axis=0)
+    #判断dataframe中有无空值
+
+
+    #产生数据集
+    train_x = train_x_raw
+    test_x = test_x_raw
+    train_y=train_y_raw
+    test_y=test_y_raw
+
+
+    '''
+         开始建模并分析结果
+    '''
+
+    for classifier in test_classifiers:    
+        print('******************* %s ********************' % classifier)    
+        start_time = time.time()    
+        model = classifiers[classifier](train_x, train_y)    
+        print('training took %fs!' % (time.time() - start_time))    
+        predict = model.predict(test_x)
+        if model_save_file != None:    
+            model_save[classifier] = model    #保存模型
+        precision = metrics.precision_score(test_y, predict)    
+        recall = metrics.recall_score(test_y, predict)    
+        print('precision: %.2f%%, recall: %.2f%%' % (100 * precision, 100 * recall))    
+        accuracy = metrics.accuracy_score(test_y, predict)    
+        print('accuracy: %.2f%%' % (100 * accuracy))
+
+    print(model_save)
+
+
+    '''
+        保存模型文件
+    '''
+
+    #print(model_save_file)
+    #model = classifiers['LR'](train_x, train_y)
+    #predict = model.predict(test_x)
+    #print ("LR :")
+    #print ("Predict：",test_x,predict.T)
+    print("是否保存  1保存 0不保存\n")
+    a = input()
+    if(a == 1):
+        pickle.dump(model_save, open('E:/model/model1.pkl', 'wb')) 
+    '''
+    if model_save_file != None:    
+        pickle.dump(model_save, open('E:/model/model1.pkl', 'wb'))  
+    '''
+
+
+
+    '''
+        模型融合
+    '''
+
+
+def ensembling(self, train_x, train_y, test_x, n_folds=5, ensemble_num=3):
+    pass
+
+
+def versiontuple(v):#Numpy版本检测函数
+    return tuple(map(int, (v.split("."))))  
+
+
+
+    '''
+        可视化
+    '''
+
+
+def plot_decision_regions(X, y, classifier, test_idx=None, resolution=0.02):
+    #画决策边界,X是特征，y是标签，classifier是分类器，test_idx是测试集序号
+    # setup marker generator and color map
+    markers = ('s', 'x', 'o', '^', 'v')
+    colors = ('red', 'blue', 'lightgreen', 'gray', 'cyan')
+    cmap = ListedColormap(colors[:len(np.unique(y))])
+ 
+    # plot the decision surface
+    x1_min, x1_max = X[:, 0].min() - 1, X[:, 0].max() + 1   #第一个特征取值范围作为横轴
+    x2_min, x2_max = X[:, 1].min() - 1, X[:, 1].max() + 1   #第二个特征取值范围作为纵轴
+    xx1, xx2 = np.meshgrid(np.arange(x1_min, x1_max, resolution),
+                           np.arange(x2_min, x2_max, resolution))  #reolution是网格剖分粒度，xx1和xx2数组维度一样
+    Z = classifier.predict(np.array([xx1.ravel(), xx2.ravel()]).T)   
+    #classifier指定分类器，ravel是数组展平；Z的作用是对组合的二种特征进行预测
+    Z = Z.reshape(xx1.shape)   #Z是列向量
+    plt.contourf(xx1, xx2, Z, alpha=0.4, cmap=cmap)  
+    #contourf(x,y,z)其中x和y为两个等长一维数组，z为二维数组，指定每一对xy所对应的z值。
+    #对等高线间的区域进行填充（使用不同的颜色）
+    plt.xlim(xx1.min(), xx1.max())
+    plt.ylim(xx2.min(), xx2.max())
+ 
+    for idx, cl in enumerate(np.unique(y)):
+        plt.scatter(x=X[y == cl, 0], y=X[y == cl, 1],
+                    alpha=0.8, c=cmap(idx),
+                    marker=markers[idx], label=cl)   #全数据集，不同类别样本点的特征作为坐标(x,y)，用不同颜色画散点图
+ 
+    # highlight test samples
+    if test_idx:
+        # plot all samples
+        if not versiontuple(np.__version__) >= versiontuple('1.9.0'):
+            X_test, y_test = X[list(test_idx), :], y[list(test_idx)]
+            warnings.warn('Please update to NumPy 1.9.0 or newer')
+        else:
+            X_test, y_test = X[test_idx, :], y[test_idx]   #X_test取测试集样本两列特征，y_test取测试集标签
+ 
+        plt.scatter(X_test[:, 0],
+                    X_test[:, 1],
+                    c='',
+                    alpha=1.0,
+                    linewidths=1,
+                    marker='o',
+                    s=55, label='test set')   #c设置颜色，测试集不同类别的实例点画图不区别颜色
