@@ -19,7 +19,7 @@ def replace_columns(data):
 
 
 def dataload(data,i,j):
-    data = data.iloc[i:j,0:10]
+    data = data.iloc[i:j,0:11]
     data = data.reset_index(drop = True)
     return data
 
@@ -29,7 +29,9 @@ def deletekh(line):
     #line = line.strip(',')
     return line
 
-
+def append(line):
+    line = line + ' '+ serialname
+    return line
 
 path1 = "D:/diskinfo_2019.6.28/"      #DICT文件所在路径
 path2 = "E:/sklearn preprocessing/"      #生成csv文件路径
@@ -37,7 +39,7 @@ filename1 = "dict_node8171_20190628result.txt"  #DICT原始文件名
 filename2 = "result4.txt"  #存放中间结果的文件名
 filename3 = "devided1.csv"  #生成的csv文件
 
-title = 'ID# ATTRIBUTE_NAME          FLAG     VALUE WORST THRESH TYPE      UPDATED  WHEN_FAILED RAW_VALUE'
+title = 'ID# ATTRIBUTE_NAME          FLAG     VALUE WORST THRESH TYPE      UPDATED  WHEN_FAILED RAW_VALUE Serial_Name'
 keyword = "Vendor Specific SMART Attributes with Thresholds:"
 serialname = "Serial Number:"
 timestamp = "Timestamp:"
@@ -67,6 +69,7 @@ while i < count:#使用循环遍历所有行，逐行判断，只要有关键字
             #
             #b.write(serialname + Serial)
     elif serialname in line:
+ #            line = line.split(':')[1] 
              b.write(line + '\n')
             
     elif timestamp in line:
@@ -83,9 +86,62 @@ print("一共有%d行"   %count)
 print("含有%s关键字的有%d行"   %(keyword,row))#此处使用格式化方法 百分号+括号
 print("特征值提取完毕")
 
-b = open(path2 + "character_separate.txt", "w",encoding='UTF-8')#创建文件存放提取后的数据
-a = open(path1 + filename2, "r",encoding='UTF-8') #注意此处的转义字符
+
+
+
+
+
+
+
+
+
+a = open(path1 + "result4.txt", "r",encoding='UTF-8')#创建文件存放提取后的数据
+b = open(path1 + "result5.txt", "w",encoding='UTF-8') #注意此处的转义字符
 count=len(open(r"D:/diskinfo_2019.6.28/result4.txt",'r',encoding='UTF-8').readlines())#使用len+readlines读取行数
+i = 0
+while i < count:#使用循环遍历所有行，逐行判断，只要有关键字，就存到新文件
+    line = a.readline()
+    #line = deletekh(line)
+    if serialname in line:#此处注意代码缩进
+        SN = line.split(':')[1] 
+        for temp in range(1,28):
+            if temp == 1:
+                line = a.readline()
+                line = a.readline()
+                line = deletekh(line)
+                line = line.strip('\n')
+                line = line  + '           ' + "Serial_Name"
+                b.write(line + '\n')
+            elif temp != 1:
+                line = a.readline()
+                line = a.readline()
+                line = deletekh(line)
+                line = line.strip('\n')
+                line = line + '          ' + SN
+                b.write(line + '\n')#注意每写一行都需要换行
+    i = i + 1
+row=len(open(r"D:/diskinfo_2019.6.28/result4.txt",'r',encoding='UTF-8').readlines())#统计新文件有多少行 
+
+a.close()
+b.close()
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+b = open(path2 + "character_separate.txt", "w",encoding='UTF-8')#创建文件存放提取后的数据
+a = open(path1 + "result5.txt", "r",encoding='UTF-8') #注意此处的转义字符
+count=len(open(r"D:/diskinfo_2019.6.28/result4.txt",'r',encoding='UTF-8').readlines())#使用len+readlines读取行数
+
 
 print(count)
 i = 0
@@ -134,7 +190,6 @@ if portion[1] == '.txt':
     os.rename(filename, newname)
 
 data = pd.read_csv(path2 + 'character_separate.csv',error_bad_lines=False)
-data['Serial_Name'] = None
 print(data.head(2100))
 
 
@@ -158,8 +213,4 @@ data1['failure'] = 0
 #data1['Timestamp'] = time[10:]
 data1.to_csv(path2 + filename3)#预处理后的文件
 
-'''
-data1['Serial Name'] = 
-data1['Timestamp'] = 
-'''
 #print("含有%s关键字的有%d行"   %(character_count,row))#
